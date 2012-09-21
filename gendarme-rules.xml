@@ -1,0 +1,66 @@
+<gendarme>
+	<ruleset name="EPS">
+		<rules include="*" from="Gendarme.Rules.BadPractice.dll"/>
+		<rules include="*" from="Gendarme.Rules.Concurrency.dll" />
+		<rules include="*" from="Gendarme.Rules.Correctness.dll"/>
+		<rules include="*" exclude="MarkAssemblyWithAssemblyVersionRule | AvoidSmallNamespaceRule" from="Gendarme.Rules.Design.dll"/>
+		<rules include="*" from="Gendarme.Rules.Design.Generic.dll"/>
+		<rules include="*" from="Gendarme.Rules.Globalization.dll"/>
+		<rules include="*" from="Gendarme.Rules.Design.Linq.dll"/>
+		<rules include="*" from="Gendarme.Rules.Exceptions.dll" />
+		<rules include="*" from="Gendarme.Rules.Interoperability.dll"/>
+		<rules include="*" from="Gendarme.Rules.Interoperability.Com.dll"/>
+		<rules include="*" exclude="UseCorrectCasingRule" from="Gendarme.Rules.Naming.dll"/>
+		<rules include="*" exclude="PreferLiteralOverInitOnlyFieldsRule" from="Gendarme.Rules.Performance.dll" />
+		<rules include="*" from="Gendarme.Rules.Portability.dll" />
+		<rules include="*" from="Gendarme.Rules.Security.dll" />
+		<rules include="*" from="Gendarme.Rules.Security.Cas.dll" />
+		<rules include="*" from="Gendarme.Rules.Serialization.dll" />
+		<rules include="*" from="Gendarme.Rules.Smells.dll"/>
+		<rules include="*" from="Gendarme.Rules.Ui.dll" />
+		<rules include="*" from="Gendarme.Rules.Maintainability.dll"/>
+	</ruleset>
+	<ruleset name="EPS.Test">
+		<rules include="*" from="Gendarme.Rules.BadPractice.dll"/>
+		<rules include="*" from="Gendarme.Rules.Concurrency.dll" />
+		<rules include="*" exclude="CheckParametersNullityInVisibleMethodsRule" from="Gendarme.Rules.Correctness.dll"/>
+		<rules include="*" exclude="MarkAssemblyWithAssemblyVersionRule | AvoidSmallNamespaceRule | PreferUriOverStringRule" from="Gendarme.Rules.Design.dll"/>
+		<rules include="PreferUriOverStringRule" applyTo="visible" from="Gendarme.Rules.Design.dll"/>
+		<rules include="*" exclude="AvoidMethodWithUnusedGenericTypeRule" from="Gendarme.Rules.Design.Generic.dll"/>
+		<rules include="AvoidMethodWithUnusedGenericTypeRule" applyTo="visible" from="Gendarme.Rules.Design.Generic.dll"/>
+		<rules include="*" from="Gendarme.Rules.Design.Linq.dll"/>
+		<rules include="*" from="Gendarme.Rules.Globalization.dll"/>
+		<rules include="*" from="Gendarme.Rules.Design.Linq.dll"/>
+		<rules include="*" exclude="UseObjectDisposedExceptionRule | AvoidArgumentExceptionDefaultConstructorRule" from="Gendarme.Rules.Exceptions.dll" />
+		<rules include="*" from="Gendarme.Rules.Interoperability.dll"/>
+		<rules include="*" from="Gendarme.Rules.Interoperability.Com.dll"/>
+		<rules include="*" exclude="UseCorrectCasingRule | AvoidNonAlphanumericIdentifierRule | AvoidDeepNamespaceHierarchyRule" from="Gendarme.Rules.Naming.dll"/>
+		<rules include="*" from="Gendarme.Rules.NUnit.dll" />
+		<!-- AvoidReturningArraysOnPropertiesRule is needed when using Xunit [PropertyData()] -->
+		<rules include="*" exclude="PreferLiteralOverInitOnlyFieldsRule | AvoidUninstantiatedInternalClassesRule | AvoidUncalledPrivateCodeRule | AvoidUnsealedUninheritedInternalTypeRule | AvoidReturningArraysOnPropertiesRule" from="Gendarme.Rules.Performance.dll" />
+		<rules include="*" from="Gendarme.Rules.Portability.dll" />
+		<rules include="*" from="Gendarme.Rules.Security.dll" />
+		<rules include="*" from="Gendarme.Rules.Security.Cas.dll" />
+		<rules include="*" from="Gendarme.Rules.Serialization.dll" />
+		<rules include="*" exclude="AvoidSpeculativeGeneralityRule" from="Gendarme.Rules.Smells.dll"/>
+		<rules include="*" from="Gendarme.Rules.Ui.dll" />
+		<rules include="*" exclude="AvoidUnnecessarySpecializationRule | AvoidAlwaysNullFieldRule | AvoidLackOfCohesionOfMethodsRule" from="Gendarme.Rules.Maintainability.dll"/>
+	</ruleset>
+	<ruleset name="mono-bcl">
+		<rules include="*" from="Gendarme.Rules.BadPractice.dll"/>
+		<rules include="*" from="Gendarme.Rules.Concurrency.dll"/>
+		<rules include="*" exclude="AvoidConstructorsInStaticTypesRule | MethodCanBeMadeStaticRule | NullDerefRule"
+			from="Gendarme.Rules.Correctness.dll"/>
+		<!-- no rule from Design is included in this set -->
+		<rules include="DontDestroyStackTraceRule" from="Gendarme.Rules.Exceptions.dll"/>
+		<rules include="*" from="Gendarme.Rules.Interoperability.dll"/>
+		<!-- no rule from Naming is included in this set -->
+		<rules include="IDisposableWithDesctuctorWithoutSupressFinalizeRule | DontIgnoreMethodResultRule |
+			UseStringEmptyRule | AvoidToStringOnStringsRule | UsingStringLengthInsteadOfCheckingEmptyStringRule"
+			from="Gendarme.Rules.Performance.dll"/>
+		<rules include="*" exclude="MonoCompatibilityReviewRule" from="Gendarme.Rules.Portability.dll"/>
+		<rules include="*" exclude="ArrayFieldsShouldNotBeReadOnlyRule | NativeFieldsShouldNotBeVisibleRule"
+			from="Gendarme.Rules.Security.dll"/>
+		<!-- no rule from Ui is included in this set -->
+	</ruleset>
+</gendarme>
