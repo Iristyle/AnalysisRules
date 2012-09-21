@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>AnalysisRules</id>
+    <version>0.0.1.0</version>
+    <title>AnalysisRules</title>
+    <authors>Ethan Brown</authors>
+    <owners>Ethan Brown</owners>
+    <summary>A simple project containing rule definitions for Gendarme, FxCop and StyleCop.</summary>
+    <description>A simple project containing rule definitions for Gendarme, FxCop and StyleCop.</description>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <releaseNotes>
+        None
+    </releaseNotes>
+    <projectUrl>https://github.com/EastPoint/AnalysisRules</projectUrl>
+    <licenseUrl>https://github.com/EastPoint/AnalysisRules/blob/master/LICENSE.md</licenseUrl>
+    <!--
+    <iconUrl>https://github.com/EastPoint/AnalysisRules/raw/master/logo.png</iconUrl>
+    -->
+    <tags>msbuild version ci continuous integration</tags>
+    <language>en-US</language>
+    <copyright>East Point Systems 2012 and contributors</copyright>
+  </metadata>
+  <files>
+    <file src="tools\*" target="tools" />
+    <!-- nuget package needs something in content, otherwise it won't run install.ps1 -->
+    <file src="content\gendarme.ignore" target="content\Properties\gendarme.ignore" />
+  </files>
+</package>
