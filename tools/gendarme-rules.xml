@@ -1,5 +1,5 @@
 <gendarme>
-	<ruleset name="EPS">
+	<ruleset name="Standard">
 		<rules include="*" from="Gendarme.Rules.BadPractice.dll"/>
 		<rules include="*" from="Gendarme.Rules.Concurrency.dll" />
 		<rules include="*" from="Gendarme.Rules.Correctness.dll"/>
@@ -20,7 +20,7 @@
 		<rules include="*" from="Gendarme.Rules.Ui.dll" />
 		<rules include="*" from="Gendarme.Rules.Maintainability.dll"/>
 	</ruleset>
-	<ruleset name="EPS.Test">
+	<ruleset name="Test">
 		<rules include="*" from="Gendarme.Rules.BadPractice.dll"/>
 		<rules include="*" from="Gendarme.Rules.Concurrency.dll" />
 		<rules include="*" exclude="CheckParametersNullityInVisibleMethodsRule" from="Gendarme.Rules.Correctness.dll"/>
