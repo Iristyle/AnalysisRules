@@ -63,16 +63,14 @@ function GetProperty($xml, $name)
     Select-Object -First 1
 }
 
-function SetProperty($xml, $name, $value)
+function RemoveProperty($xml, $name)
 {
-  $property = GetProperty $xml $name
-
-  if ($property -eq $null)
-  {
-    [Void]$xml.AddProperty($name, $value)
-    Write-Host "Added property $name"
-  }
-  else { $property.Value = $value }
+  $xml.Properties |
+    ? { $name -icontains $_.Name } |
+    % {
+      $_.Parent.RemoveChild($_)
+      Write-Host "Removed property $($_.Name) from project file"
+    }
 }
 
 #TODO - don't think we have to incorporate these values
@@ -90,13 +88,27 @@ Add-Type -AssemblyName 'Microsoft.Build, Version=4.0.0.0, Culture=neutral, Publi
 #http://msdn.microsoft.com/en-us/library/microsoft.build.evaluation.project
 #http://msdn.microsoft.com/en-us/library/microsoft.build.construction.projectrootelement
 #http://msdn.microsoft.com/en-us/library/microsoft.build.construction.projectitemelement
-$msbuild = [Microsoft.Build.Evaluation.ProjectCollection]::GlobalProjectCollection.GetLoadedProjects($project.FullName) | Select-Object -First 1
+$msbuild = [Microsoft.Build.Evaluation.ProjectCollection]::GlobalProjectCollection.GetLoadedProjects($project.FullName) |
+  Select-Object -First 1
 
-#Add the CODE_ANALYSIS property to any constants that aren't defined DEBUG
+$editorConfigDest = Join-Path $solutionPath '.editorconfig'
+if (!(Test-Path $editorconfigDest))
+{
+  $editorconfigSrc = Join-Path $toolsPath 'default.editorconfig'
+  Copy-Item -Path $editorconfigSrc -Destination $editorConfigDest
+}
+
+#Add the CODE_ANALYSIS property to builds where appropriate
 $msbuild.Xml.Properties |
-  ? { ($_.Name -ieq 'DefineConstants') -and ($_.Value -inotmatch 'DEBUG') `
-    -and ($_.Value -inotmatch 'CODE_ANALYSIS') } |
-  % { $_.Value += ';CODE_ANALYSIS' }
+  ? { $_.Name -ieq 'DefineConstants' } |
+  % {
+    $isDebug = ($_.Value -imatch '(^|;)DEBUG(;|$)') -or `
+      ($_.Parent.Condition -imatch '== ''Debug\|')
+    $isCodeAnalysis = $_.Value -imatch '(^|;)CODE_ANALYSIS(;|$)'
+
+    if ((!$isDebug) -and (!$isCodeAnalysis))
+      { $_.Value += ';CODE_ANALYSIS' }
+  }
 
 # Make the path to the targets file relative.
 $projectUri = New-Object Uri("file://$($project.FullName)")
@@ -105,46 +117,110 @@ $relativePath = $projectUri.MakeRelativeUri($targetUri).ToString() `
   -replace [IO.Path]::AltDirectorySeparatorChar, [IO.Path]::DirectorySeparatorChar
 
 #update AnalysisRules relative path based on version
-SetProperty $msbuild.Xml $package.Id $relativePath
+$msbuild.SetProperty($package.Id, $relativePath)
 
-#make sure our WarningLevel is at 4
-SetProperty $msbuild.Xml 'WarningLevel' '4'
+#make sure our WarningLevel is at 4 and we flag warnings as errors
+$msbuild.SetProperty('WarningLevel', '4')
+
+# for future use - mark specific compiler warnings as errors (by name)
+# $msbuild.SetProperty('WarningsAsErrors', 'CS1234')
+
+# Code Analysis MSBuild variables
+# http://www.bryancook.net/2011/06/visual-studio-code-analysis-settings.html
 
 #Assume that a build server runs FxCop differently and collects the output
-SetProperty $msbuild.Xml 'RunCodeAnalysis' '$(BuildingInsideVisualStudio)'
+#$msbuild.SetProperty('RunCodeAnalysis', '$(BuildingInsideVisualStudio)')
+$msbuild.SetProperty('RunCodeAnalysis', 'True')
+$msbuild.SetProperty('FxCopVs', '..\..\Team Tools\Static Analysis Tools\FxCop')
+
+# This is how we could set a FxCop log file
+# $msbuild.Xml.PropertyGroups |
+#   % {
+#     $outputPath = $_.Properties |
+#       ? { $_.Name -eq 'OutputPath' }
+
+#     if ($outputPath -ne $null)
+#     {
+#       $_.AddProperty('CodeAnalysisLogFile', '$(OutputPath)\FxCopLog.xml')
+#     }
+#   }
+
+
+# clean up *all* existing variables should they exist
+RemoveProperty $msbuild.Xml 'CodeAnalysisPath'
+
+#FxCop is fickle - tell it where to find itself - order is critical! (last wins)
+# http://geekswithblogs.net/terje/archive/2012/08/18/how-to-fix-the-ca0053-error-in-code-analysis-in.aspx
+$fxCops = "`$(ProgramFiles)\Microsoft Fxcop 10.0",
+  "`$(MSBuildProgramFiles32)\Microsoft Fxcop 10.0",
+  # VS 2010
+  "`$(VS100COMNTOOLS)`$(FxCopVs)",
+  # VS 2012
+  "`$(VS110COMNTOOLS)`$(FxCopVs)",
+  # match up with current VS, but only defined inside VS
+  # http://blogs.clariusconsulting.net/kzu/devenvdir-considered-harmful/
+  "`$(DevEnvDir)`$(FxCopVs)"
+
+$fxCops |
+  % {
+    # HACK: MsBuild API is wacky - have to add a property with junk name
+    # then rename, otherwise, only one name goes in
+    $fakeName = 'fake' + [Guid]::NewGuid().ToString('n')
+    $msbuild.SetProperty($fakeName, $_)
+    $fakeProperty = GetProperty $msbuild.Xml $fakeName
+    $fakeProperty.Condition = "Exists('$($_)')"
+    $fakeProperty.Name = 'CodeAnalysisPath'
+  }
+
+#to use the above, it has to follow in the order
+RemoveProperty $msBuild.Xml 'FxCopPath'
+$msbuild.SetProperty('FxCopPath', '$(CodeAnalysisPath)')
+
+#now tell it alternate rule directories (reversed from above - first wins)
+#TODO: point at ASP.NET security rules! this generates CA0053 errors
+#$msBuild.SetProperty('CodeAnalysisRuleDirectories',
+#  (($fxCops[$fxCops.Count..0] | % { Join-Path $_ 'Rules' })  -join ';'))
+
+#to use the above, it has to follow in the order
+RemoveProperty $msBuild.Xml 'FxCopRulesPath'
+$msBuild.SetProperty('FxCopRulesPath', '$(CodeAnalysisRuleDirectories)')
 
 #convention that projects ending in .test or .tests get different rules
 $lowerName = $project.Name.ToLower()
 $isTest = $lowerName.EndsWith('.test') -or $lowerName.EndsWith('.tests')
 
 #configure FxCop to run the appropriate ruleset file
-$ruleFile = if ($isTest) { 'FxCopRules.Test.ruleset' }
-else { 'FxCopRules.ruleset' }
-SetProperty $msbuild.Xml 'CodeAnalysisRuleSet' `
-  "`$(MSBuildThisFileDirectory)\$ruleFile"
+if ($isTest)
+{
+  $ruleFile = 'FxCopRules.Test.ruleset'
+  $ruleSet = 'Test'
+}
+else
+{
+  $ruleFile = 'FxCopRules.ruleset'
+  $ruleSet = 'Standard'
+}
 
-#ruleset name is 'FxCop Rules' in both files
-SetProperty $msbuild.Xml 'Ruleset' 'FxCop Rules'
+$msbuild.SetProperty('CodeAnalysisRuleSet', "`$($($package.Id))\$ruleFile")
+$msbuild.SetProperty('Ruleset', $ruleSet)
 
 #for future tooling - let the project know that Gendarme is here
-SetProperty $msbuild.Xml 'GendarmeConfigFilename' "`$($($package.Id))\gendarme-rules.xml"
+$msbuild.SetProperty('GendarmeConfigFilename',
+  "`$($($package.Id))\gendarme-rules.xml")
 $gendarmeRuleset = if ($isTest) { 'Test' } else { 'Standard' }
-SetProperty $msbuild.Xml 'GendarmeRuleset' $gendarmeRuleset
-SetProperty $msbuild.Xml 'GendarmeIgnoreFilename' 'Properties\gendarme.ignore'
+$msbuild.SetProperty('GendarmeRuleset', $gendarmeRuleset)
+$msbuild.SetProperty('GendarmeIgnoreFilename', 'Properties\gendarme.ignore')
 
 #ignore inline []s in attributes for xunit [Theory]
 if ($isTest)
 {
-  $noWarn = GetProperty $msbuild.Xml 'NoWarn'
-  $noWarn = if ([string]::IsNullOrEmpty($noWarn)) { '3016' }
-  else { ', 3016' }
-  SetProperty $msbuild.Xml 'NoWarn' $noWarn
+  $noWarn = (GetProperty $msbuild.Xml 'NoWarn').Value
+  if ([string]::IsNullOrEmpty($noWarn))
+    { $noWarn = '3016' }
+  elseif ($noWarn -inotmatch '(^|,|\s)3016(,|\s|$)' )
+    { $noWarn += ', 3016' }
+  $msbuild.SetProperty('NoWarn', $noWarn)
 }
-
-#TODO: not sure if we should push these bits along somehow anymore
-# <FxCopPath>$(ToolsPath)\FxCop-10.0</FxCopPath>
-# <FxCopRulesPath>$(ToolsPath)\FxCop-10.0\Rules</FxCopRulesPath>
-# <CodeAnalysisRuleDirectories>$(FxCopRulesPath)</CodeAnalysisRuleDirectories>
 
 #incorporate CustomDictionary in the project
 $dictionaryPath = "`$($($package.Id))\CustomDictionary.xml"
@@ -160,25 +236,34 @@ $localSettingsPath = Join-Path $projectPath 'Settings.StyleCop'
 #if file exists it may have rule overrides
 if (Test-Path $localSettingsPath)
 {
+  Write-Host "Modifying existing StyleCop Settings at $localSettingsPath"
   $xml = [Xml](Get-Content $localSettingsPath)
-  $styleCopSettings.StyleCopSettings.GlobalSettings.StringProperty |
+  $xml.StyleCopSettings.GlobalSettings.StringProperty |
     ? { $_.Name -eq 'LinkedSettingsFile' } |
-    % { $_.'#text' = $parentSettingsPath }
+    % {
+      # If the reference was changed from Settings to Settings.Test
+      # based on an incorrect match-up heuristic to determine 'Test' project
+      $fileName = Split-Path $_.'#text' -Leaf
+      $_.InnerText = Join-Path $relativePath $fileName
+    }
+  $xml.Save($localSettingsPath)
 }
 else
 {
+  Write-Host "Writing new StyleCop.Settings file to $localSettingsPath"
   $styleCopSettings = @"
 <StyleCopSettings Version="4.3">
+  <!-- WARNING: Only valid filenames for LinkedSettingsFile are:
+    Settings.StyleCop
+    Settings.Test.StyleCop -->
   <GlobalSettings>
     <StringProperty Name="LinkedSettingsFile">$parentSettingsPath</StringProperty>
     <StringProperty Name="MergeSettingsFiles">Linked</StringProperty>
   </GlobalSettings>
 </StyleCopSettings>
 "@
-  $styleCopSettings | Out-File $localSettingsPath
+  $styleCopSettings | Out-File $localSettingsPath -Encoding UTF8
 }
 
 $item = AddOrGetItem $msbuild.Xml 'None' 'Settings.StyleCop'
-SetItemMetadata $item 'Link' 'Properties\Settings.StyleCop'
-
 $project.Save($project.FullName)
