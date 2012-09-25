@@ -165,11 +165,23 @@ $fxCops |
   % {
     # HACK: MsBuild API is wacky - have to add a property with junk name
     # then rename, otherwise, only one name goes in
-    $fakeName = 'fake' + [Guid]::NewGuid().ToString('n')
-    $msbuild.SetProperty($fakeName, $_)
-    $fakeProperty = GetProperty $msbuild.Xml $fakeName
-    $fakeProperty.Condition = "Exists('$($_)')"
+    $fxCopPath = @{
+      Name = 'fake' + [Guid]::NewGuid().ToString('n');
+      Path = $_;
+    }
+    $msbuild.SetProperty($fxCopPath.Name, $fxCopPath.Path) | Out-Null
+    return $fxCopPath
+  } |
+  #HACK: two separate iterations required for DTE to properly handle this
+  % {
+    Write-Host ("Hacking property $($_.Name) back to 'CodeAnalysisPath' and" +
+      "setting conditional path to $($_.Path)")
+    $fakeProperty = GetProperty $msbuild.Xml $_.Name
+    $fakeProperty.Condition = "Exists('$($_.Path)')"
     $fakeProperty.Name = 'CodeAnalysisPath'
+    # HACK: calling Save() here causes extra VS 'reload' dialogs
+    # but for some reason allows all $fxCops to go in properly all the time
+    #$msbuild.Save()
   }
 
 #to use the above, it has to follow in the order
