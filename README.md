@@ -1,6 +1,6 @@
 # AnalysisRules
 
-This project uses NuGet to distribute custom analysis and style rules, so that
+Mhis project uses NuGet to distribute custom analysis and style rules, so that
 consistency across projects can be mandated (and so that the rules may be
 easily updated over time).  The major players are:
 
