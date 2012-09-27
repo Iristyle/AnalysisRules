@@ -6,9 +6,12 @@ $solution = Get-Interface $dte.Solution ([EnvDTE80.Solution2])
 $projectPath = ([IO.Path]::GetDirectoryName($project.FullName))
 
 #remove custom properties
-$installedProperties = @($package.Id, 'CodeAnalysisRuleSet', 'Ruleset',
+#assumption is if we turn this off, we don't want do anything code analysis
+#anymore
+$installedProperties = @($package.Id, 'RunCodeAnalysis', 'FxCopVs',
+  'CodeAnalysisRuleSet', 'CodeAnalysisPath', 'Ruleset',
+  'FxCopPath', 'FxCopRulesPath',
   'GendarmeConfigFilename', 'GendarmeRuleset', 'GendarmeIgnoreFilename')
-#leave RunCodeAnalysis b/c we can't be certain it wasn't there already
 #leave NoWarn 3016 on test projects b/c we don't know if it was there already
 
 $msbuild.Xml.Properties |
