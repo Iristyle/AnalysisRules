@@ -153,10 +153,10 @@ RemoveProperty $msbuild.Xml 'CodeAnalysisPath'
 # http://geekswithblogs.net/terje/archive/2012/08/18/how-to-fix-the-ca0053-error-in-code-analysis-in.aspx
 $fxCops = "`$(ProgramFiles)\Microsoft Fxcop 10.0",
   "`$(MSBuildProgramFiles32)\Microsoft Fxcop 10.0",
-  # VS 2010
-  "`$(VS100COMNTOOLS)`$(FxCopVs)",
   # VS 2012
   "`$(VS110COMNTOOLS)`$(FxCopVs)",
+  # VS 2010
+  "`$(VS100COMNTOOLS)`$(FxCopVs)",
   # match up with current VS, but only defined inside VS
   # http://blogs.clariusconsulting.net/kzu/devenvdir-considered-harmful/
   "`$(DevEnvDir)`$(FxCopVs)"
